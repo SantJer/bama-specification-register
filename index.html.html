@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bama Blomster — Specification Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+  :root{
+    --ink:#16233D; --leaf:#3F6B34; --leaf-light:#E9EFE3; --paper:#F7F5EF; --panel:#FFFFFF;
+    --line:#E3DFD3; --slate:#5B6472; --amber:#B5762B; --amber-bg:#FBF0DF;
+    --rose:#A8455A; --rose-bg:#F7E8EA; --radius:10px;
+    --shadow: 0 1px 2px rgba(22,35,61,0.06), 0 8px 24px -12px rgba(22,35,61,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif; }
+
+  /* ---------- Sign-in screen ---------- */
+  #signinScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px;
+  }
+  #signinScreen .mark{
+    width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg,var(--leaf),#6E9C5E);
+    display:flex; align-items:center; justify-content:center; color:white; font-family:'Fraunces',serif; font-size:26px; font-weight:700;
+  }
+  #signinScreen h1{ font-family:'Fraunces',serif; font-size:24px; margin:0; }
+  #signinScreen p{ color:var(--slate); font-size:13.5px; margin:0; text-align:center; max-width:340px; }
+  #signInBtn{
+    background:var(--ink); color:white; border:none; padding:12px 22px; border-radius:8px;
+    font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:10px;
+  }
+  #signInBtn:hover{ background:#233252; }
+  #configWarning{
+    display:none; max-width:420px; background:var(--amber-bg); color:var(--amber); border-radius:8px;
+    padding:12px 16px; font-size:12.5px; text-align:left; line-height:1.5;
+  }
+
+  /* ---------- App shell (reused from prototype) ---------- */
+  #appShell{ display:none; max-width:1200px; margin:0 auto; padding:30px 30px 60px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+  .topbar h1{ font-family:'Fraunces',serif; font-size:24px; margin:0; }
+  .topbar .who{ font-size:12px; color:var(--slate); }
+  .btn{ background:var(--ink); color:white; border:none; padding:10px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-out{ background:var(--panel); border:1px solid var(--line); color:var(--slate); padding:8px 14px; border-radius:8px; font-size:12px; cursor:pointer; }
+
+  .sync-banner{
+    display:flex; align-items:center; gap:8px; background:var(--leaf-light); color:var(--leaf);
+    font-size:12px; padding:8px 14px; border-radius:8px; margin-bottom:18px; font-weight:500;
+  }
+  .sync-banner.loading{ background:#EEF0F4; color:var(--slate); }
+  .sync-banner.error{ background:var(--rose-bg); color:var(--rose); }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px;
+    box-shadow:var(--shadow); cursor:pointer;
+  }
+  .card:hover{ transform:translateY(-2px); transition:.12s; }
+  .card-title{ font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+  .card-sub{ font-size:12px; color:var(--slate); margin:2px 0 10px; }
+  .badge{ font-size:10.5px; padding:3px 9px; border-radius:20px; font-weight:600; float:right; }
+  .badge.ok{ background:var(--leaf-light); color:var(--leaf); }
+  .badge.flag{ background:var(--amber-bg); color:var(--amber); }
+  .badge.draft{ background:#EEF0F4; color:var(--slate); }
+  .field{ font-size:12px; color:var(--slate); margin-top:4px; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(22,35,61,.35); display:none; align-items:stretch; justify-content:flex-end; z-index:50; }
+  .overlay.open{ display:flex; }
+  .drawer{ width:min(480px,100%); background:var(--paper); height:100%; overflow-y:auto; padding:26px; box-shadow:-10px 0 30px rgba(0,0,0,.15); }
+  .drawer h2{ font-family:'Fraunces',serif; }
+  .close{ float:right; border:1px solid var(--line); background:none; border-radius:50%; width:28px; height:28px; cursor:pointer; }
+  .row{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #EAE6D9; font-size:13px; }
+  .row .k{ color:var(--slate); }
+  .row .v{ font-weight:500; text-align:right; }
+  select.statusSelect{ margin-top:16px; width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); font-family:inherit; }
+  .saveBtn{ margin-top:10px; width:100%; background:var(--leaf); color:white; border:none; padding:10px; border-radius:8px; font-weight:600; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<!-- ========================= SIGN-IN SCREEN ========================= -->
+<div id="signinScreen">
+  <div class="mark">B</div>
+  <h1>Bama Blomster Specification Register</h1>
+  <p>Sign in with your Bama Microsoft 365 account. No separate login — this connects directly to your organization's real SharePoint list.</p>
+  <button id="signInBtn">🔑 Sign in with Microsoft</button>
+  <div id="configWarning"></div>
+</div>
+
+<!-- ========================= MAIN APP ========================= -->
+<div id="appShell">
+  <div class="topbar">
+    <h1>Specification Register</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="who" id="whoami"></span>
+      <button class="btn-out" id="signOutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div id="syncBanner" class="sync-banner loading">Loading live data from SharePoint…</div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="drawer" id="drawer"></div>
+</div>
+
+<script>
+/* =========================================================================
+   CONFIGURATION — an IT admin fills these in after registering the app
+   in Azure Active Directory (Entra ID). See the setup notes at the bottom
+   of this file for exact steps.
+   ========================================================================= */
+const CONFIG = {
+  CLIENT_ID: "PASTE-YOUR-AZURE-APP-CLIENT-ID-HERE",
+  TENANT_ID: "PASTE-YOUR-BAMA-TENANT-ID-HERE",     // or "common" for multi-tenant
+  REDIRECT_URI: window.location.origin + window.location.pathname,
+
+  // The SharePoint site and list this app reads/writes.
+  // IMPORTANT: for org-wide use, this list should live on a proper Team Site
+  // (e.g. https://bama.sharepoint.com/sites/BBS-Drift), NOT a personal
+  // OneDrive "My lists" area — personal lists are private by default and
+  // won't be reachable by other staff even with correct app permissions.
+  SITE_HOSTNAME: "bama.sharepoint.com",
+  SITE_PATH: "/sites/PASTE-YOUR-TEAM-SITE-NAME",
+  LIST_NAME: "Bama_Specification_Register_for_Lists"
+};
+
+/* ========================================================================= */
+
+const msalConfig = {
+  auth: {
+    clientId: CONFIG.CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${CONFIG.TENANT_ID}`,
+    redirectUri: CONFIG.REDIRECT_URI
+  },
+  cache: { cacheLocation: "sessionStorage" }
+};
+
+let msalInstance;
+let account;
+let siteId, listId;
+
+const graphScopes = ["Sites.ReadWrite.All", "User.Read"];
+
+function configLooksUnset(){
+  return CONFIG.CLIENT_ID.startsWith("PASTE-") || CONFIG.TENANT_ID.startsWith("PASTE-") || CONFIG.SITE_PATH.includes("PASTE-");
+}
+
+window.addEventListener('load', () => {
+  if (configLooksUnset()) {
+    document.getElementById('configWarning').style.display = 'block';
+    document.getElementById('configWarning').innerHTML =
+      "⚠ This page isn't configured yet. An admin needs to fill in CLIENT_ID, TENANT_ID, and SITE_PATH " +
+      "at the top of the script (see setup notes) before sign-in will work.";
+    document.getElementById('signInBtn').disabled = true;
+    document.getElementById('signInBtn').style.opacity = 0.5;
+    return;
+  }
+  msalInstance = new msal.PublicClientApplication(msalConfig);
+  document.getElementById('signInBtn').onclick = signIn;
+  document.getElementById('signOutBtn').onclick = () => msalInstance.logoutRedirect();
+});
+
+async function signIn(){
+  try{
+    const result = await msalInstance.loginPopup({ scopes: graphScopes });
+    account = result.account;
+    msalInstance.setActiveAccount(account);
+    enterApp();
+  }catch(e){
+    alert("Sign-in failed: " + e.message);
+  }
+}
+
+async function getToken(){
+  const req = { scopes: graphScopes, account };
+  try{
+    const res = await msalInstance.acquireTokenSilent(req);
+    return res.accessToken;
+  }catch(e){
+    const res = await msalInstance.acquireTokenPopup(req);
+    return res.accessToken;
+  }
+}
+
+async function graphFetch(path, options={}){
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    ...options,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers||{})
+    }
+  });
+  if(!res.ok){ throw new Error(`Graph API error ${res.status}: ${await res.text()}`); }
+  return res.status === 204 ? null : res.json();
+}
+
+async function enterApp(){
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  document.getElementById('whoami').textContent = `Signed in as ${account.username}`;
+  await resolveSiteAndList();
+  await loadItems();
+}
+
+async function resolveSiteAndList(){
+  const site = await graphFetch(`/sites/${CONFIG.SITE_HOSTNAME}:${CONFIG.SITE_PATH}`);
+  siteId = site.id;
+  const lists = await graphFetch(`/sites/${siteId}/lists?$filter=displayName eq '${CONFIG.LIST_NAME}'`);
+  if(!lists.value.length) throw new Error(`List "${CONFIG.LIST_NAME}" not found on this site.`);
+  listId = lists.value[0].id;
+}
+
+let items = [];
+
+async function loadItems(){
+  const banner = document.getElementById('syncBanner');
+  banner.className = 'sync-banner loading';
+  banner.textContent = 'Loading live data from SharePoint…';
+  try{
+    const data = await graphFetch(`/sites/${siteId}/lists/${listId}/items?expand=fields&$top=200`);
+    items = data.value.map(i => ({ id: i.id, ...i.fields }));
+    banner.className = 'sync-banner';
+    banner.textContent = `✓ Synced — ${items.length} specifications loaded live from SharePoint`;
+    render();
+  }catch(e){
+    banner.className = 'sync-banner error';
+    banner.textContent = '⚠ Could not load data: ' + e.message;
+  }
+}
+
+function render(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  items.forEach(p=>{
+    const status = (p.Reviewstatus || p.Review_x0020_status || 'Draft');
+    const badgeClass = status === 'Approved' ? 'ok' : status === 'Pending review' ? 'flag' : 'draft';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => openDrawer(p);
+    card.innerHTML = `
+      <span class="badge ${badgeClass}">${status}</span>
+      <div class="card-title">${p.Title || p.Productname || 'Untitled'}</div>
+      <div class="card-sub">${p.Supplier||''} · ${p.Salesperiod||''}</div>
+      <div class="field"><b>Pot size:</b> ${p.Potsizecm||'—'}</div>
+      <div class="field"><b>Colors:</b> ${p.Colorsmix||'—'}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openDrawer(p){
+  const drawer = document.getElementById('drawer');
+  drawer.innerHTML = `
+    <button class="close" onclick="document.getElementById('overlay').classList.remove('open')">✕</button>
+    <h2>${p.Title || p.Productname}</h2>
+    <div class="row"><span class="k">Supplier</span><span class="v">${p.Supplier||'—'}</span></div>
+    <div class="row"><span class="k">Sales period</span><span class="v">${p.Salesperiod||'—'}</span></div>
+    <div class="row"><span class="k">Olfinummer</span><span class="v">${p.Olfinummer||'—'}</span></div>
+    <div class="row"><span class="k">Maturity stage</span><span class="v">${p.Maturitystage||'—'}</span></div>
+    <div class="row"><span class="k">Transport temp</span><span class="v">${p.Transporttemp||'—'}</span></div>
+    <label style="font-size:12px;color:var(--slate);">Review status (writes back to SharePoint live)</label>
+    <select class="statusSelect" id="statusPick">
+      <option ${p.Reviewstatus==='Draft'?'selected':''}>Draft</option>
+      <option ${p.Reviewstatus==='Pending review'?'selected':''}>Pending review</option>
+      <option ${p.Reviewstatus==='Approved'?'selected':''}>Approved</option>
+    </select>
+    <button class="saveBtn" onclick="saveStatus('${p.id}')">Save to SharePoint</button>
+  `;
+  document.getElementById('overlay').classList.add('open');
+}
+
+async function saveStatus(itemId){
+  const newStatus = document.getElementById('statusPick').value;
+  const banner = document.getElementById('syncBanner');
+  try{
+    await graphFetch(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, {
+      method: "PATCH",
+      body: JSON.stringify({ Reviewstatus: newStatus })
+    });
+    document.getElementById('overlay').classList.remove('open');
+    await loadItems(); // re-sync so everyone's next load sees the real, current state
+  }catch(e){
+    banner.className = 'sync-banner error';
+    banner.textContent = '⚠ Could not save: ' + e.message;
+  }
+}
+
+document.getElementById('overlay').addEventListener('click', e=>{
+  if(e.target.id==='overlay') e.currentTarget.classList.remove('open');
+});
+</script>
+
+<!--
+=====================================================================
+SETUP NOTES FOR WHOEVER DEPLOYS THIS (typically a Bama IT admin)
+=====================================================================
+
+1. REGISTER THE APP IN AZURE
+   - Go to portal.azure.com → Azure Active Directory → App registrations → New registration
+   - Name: "Bama Specification Register"
+   - Redirect URI: type "Single-page application (SPA)", value = the exact URL
+     this file will be hosted at (e.g. https://your-hosting-url/dashboard.html)
+   - After creating it, copy the "Application (client) ID" and
+     "Directory (tenant) ID" from the Overview page into CONFIG above.
+
+2. GRANT API PERMISSIONS
+   - In the app registration → API permissions → Add a permission → Microsoft Graph
+   - Add: Sites.ReadWrite.All (Delegated) and User.Read (Delegated)
+   - Click "Grant admin consent" (needs a Global/SharePoint admin to approve this once)
+
+3. FILL IN THE SITE PATH
+   - SITE_HOSTNAME and SITE_PATH above should point to the Team Site the
+     specification list actually lives on. If the list is currently under
+     a personal OneDrive ("My lists"), move it to a shared Team Site first —
+     personal lists aren't visible to other staff regardless of app permissions.
+
+4. HOST THE FILE
+   - Any static web hosting works: Azure Static Web Apps (free tier is fine
+     for this), an internal Bama web server, or a SharePoint site page.
+   - Whatever URL you choose MUST exactly match the Redirect URI from step 1.
+
+5. SHARE THE LINK
+   - Send the hosted URL to your team. Each person signs in with their own
+     Bama Microsoft 365 account — no new accounts, and SharePoint's existing
+     permissions on the list still apply (someone with only Read access on
+     the list will get a permissions error if they try to save a change here).
+=====================================================================
+-->
+</body>
+</html>
